@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Net;
@@ -75,7 +75,7 @@ namespace GameServer
                     int _byteLength = stream.EndRead(_result);
                     if (_byteLength <= 0)
                     {
-                        // TODO: disconnect
+                        Server.clients[id].Disconnect();
                         return;
                     }
 
@@ -88,7 +88,7 @@ namespace GameServer
                 catch (Exception _ex)
                 {
                     Console.WriteLine($"Error receiving TCP data: {_ex}");
-                    // TODO: disconnect
+                    Server.clients[id].Disconnect();
                 }
             }
 
@@ -137,6 +137,15 @@ namespace GameServer
 
                 return false;
             }
+
+            public void Disconnect()
+            {
+                socket.Close();
+                stream = null;
+                receivedData = null;
+                receiveBuffer = null;
+                socket = null;
+            }
         }
 
         public class UDP
@@ -174,14 +183,17 @@ namespace GameServer
                     }
                 });
             }
+
+            public void Disconnect()
+            {
+                endPoint = null;
+            }
         }
 
         public void SendIntoGame(string _playerName)
         {
             player = new Player(id, _playerName, new Vector3(0, 0, 0));
-            
 
-            //新規プレイヤーにすでに接続済みのユーザの全データを送信する
             foreach (Client _client in Server.clients.Values)
             {
                 if (_client.player != null)
@@ -193,7 +205,6 @@ namespace GameServer
                 }
             }
 
-            //すでに接続済みのユーザに新規プレイヤーのデータを送信する
             foreach (Client _client in Server.clients.Values)
             {
                 if (_client.player != null)
@@ -201,6 +212,16 @@ namespace GameServer
                     ServerSend.SpawnPlayer(_client.id, player);
                 }
             }
+        }
+
+        private void Disconnect()
+        {
+            Console.WriteLine($"{tcp.socket.Client.RemoteEndPoint} has disconnected.");
+
+            player = null;
+
+            tcp.Disconnect();
+            udp.Disconnect();
         }
     }
 }
